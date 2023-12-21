@@ -58,7 +58,7 @@ object Task5 {
     def reverse(): List[DataMapping] = mappingChain.map(_.reverse()).reverse
 
     def transform(inputRanges: List[Range]): List[Range] = mappingChain.foldLeft(inputRanges) {
-      (nextRange, dataMapping) => println(nextRange)
+      (nextRange, dataMapping) =>
         dataMapping.transform(nextRange)
     }
   }
@@ -72,9 +72,9 @@ object Task5 {
       case line if line(0).isLetter => currentList = ListBuffer[DataMappingItem]()
       case line@digits if line(0).isDigit => currentList.addOne(parseMapping(digits))
     }
+    mappings.addOne(new DataMapping(currentList.toList))
 
     val locations = findLocation(DataMappingChain(mappings.toList), seed)
-    println(locations)
     locations.map(_.start).min
   }
 
@@ -97,6 +97,7 @@ object Task5 {
       case line if line(0).isLetter => currentList = ListBuffer[DataMappingItem]()
       case line@digits if line(0).isDigit => currentList.addOne(parseMapping(digits))
     }
+    mappings.addOne(new DataMapping(currentList.toList))
 
     backwardMapping(DataMappingChain(mappings.toList), seed)
   }
@@ -106,15 +107,16 @@ object Task5 {
     val starts = seedInput.zipWithIndex.filter{ s => (s._2 % 2) == 0 }.map(_._1)
     val lengths = seedInput.zipWithIndex.filter{ s => (s._2 % 2) == 1 }.map(_._1)
 
-    starts.zip(lengths).map { t => Range(t._1, t._2) }
+    starts.zip(lengths).map { t => Range(t._1, t._2) }.sortBy( _.start )
   }
   def backwardMapping(chain: DataMappingChain, seeds: List[Range]): Long = {
     val preppedChain = chain.reverse()
     preppedChain.head.mappingList foreach  { dm =>
-      val seedRange = findRanges(1, List(dm.sourceRange()), preppedChain)
+      val seedRange = findRanges(0, List(dm.sourceRange()), preppedChain)
       val availableSeeds = checkSeeds(seedRange, seeds)
       availableSeeds match {
         case Some(r) => return findLocation(chain, List(r)).head.start
+        case None => ""
       }
     }
     -1
@@ -136,6 +138,7 @@ object Task5 {
       actualSeeds foreach { a =>
         t.intersection(a) match {
           case Some(r) => return Some(r)
+          case None => ""
         }
       }
     }
