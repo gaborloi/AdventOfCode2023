@@ -20,5 +20,5 @@ class TestTask5Suite extends AnyFunSuite {
 
   test("task5_2 all file") {
     println(Task5.parseFile2(Source.fromResource("input_all_5.txt")))
-  } // 793 669 743 too high, 99 751 240
+  } // 99 751 240
 }
