@@ -9,14 +9,6 @@ object Task10 {
     def -(that: Cord): Cord = Cord(r - that.r, c - that.c)
   }
 
-//  private case class Pipe(cord: Cord, repr: Char) {
-//
-//    val exits: String = pipeDef.map { case (k,v) => v -> k}(repr)}
-//    def flow()
-//  }
-
-
-
   val cordMap: Map[Char, Cord] =
     Map('l' -> Cord(0,-1), 'r' -> Cord(0,1), 'u' -> Cord(-1,0), 'd' -> Cord(1,0))
 
