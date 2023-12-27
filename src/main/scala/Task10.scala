@@ -12,7 +12,7 @@ object Task10 {
   val cordMap: Map[Char, Cord] =
     Map('l' -> Cord(0,-1), 'r' -> Cord(0,1), 'u' -> Cord(-1,0), 'd' -> Cord(1,0))
 
-  val pipeDef = Map( "du" -> '|', "lr" -> '-', "dl" -> '7', "dr" -> 'F', "lu" -> 'J', "ru" -> 'L')
+  val pipeDef: Map[String, Char] = Map( "du" -> '|', "lr" -> '-', "dl" -> '7', "dr" -> 'F', "lu" -> 'J', "ru" -> 'L')
 
   case class PipeMap(mapArray: Array[Array[Char]]) {
 
