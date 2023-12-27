@@ -20,7 +20,7 @@ class TestTask12Suite extends AnyFunSuite {
 
   test("task12_2 test file") {
     println(Task12.calcFile2(Source.fromResource("input_test_12.txt")))
-  } //
+  } // 525152
 
   test("task12_2 all file") {
     println(Task12.calcFile2(Source.fromResource("input_all_12.txt")))
