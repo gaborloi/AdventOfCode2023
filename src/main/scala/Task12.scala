@@ -31,7 +31,6 @@ object Task12 {
       }
       if (insightIdx == insight.length - 1) {
         val lastHashTag = faultyLine.zipWithIndex.findLast { case (c, _) => c == '#' }.map(_._2).getOrElse(-1)
-        println(faultyLine, insight, indexCountUpd.map { case (k,v) => if (k > lastHashTag) v else 0 }.sum)
         return indexCountUpd.map { case (k,v) => if (k > lastHashTag) v else 0 }.sum
       }
       countArrangements(insightIdx + 1, indexCountUpd)
