@@ -46,10 +46,6 @@ object Task13 {
     val strList = file.getLines().toList
     val puzzles = parseFile(strList, List())
     puzzles.foldLeft(0) { (n, mp) =>
-      println(checkVerticalSmudge(mp.mirrored, 0))
-      for (arr <- mp.mirrored) println(arr.toList)
-      println(checkVertical(mp.mirrored.transpose, 0))
-      for (arr <- mp.mirrored.transpose) println(arr.toList)
       n + checkVerticalSmudge(mp.mirrored, 0) + checkVerticalSmudge(mp.mirrored.transpose, 0) * 100
     }
   }
