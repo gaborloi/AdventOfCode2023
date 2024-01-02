@@ -26,14 +26,14 @@ object Task17 {
 
     @tailrec
     final def backwardPropagation(optPaths: List[OptPathStep]): List[OptPathStep] = {
-      println(optPaths)
+//      println(optPaths)
       val nextIter = optPaths.head
 
       if ((nextIter.cord.r == 0) && (nextIter.cord.c == 0)) return List(nextIter)
       val currentHist = optPathHist(nextIter.cord.r)(nextIter.cord.c)
       val nextSteps = nextIter.update(currentHist, nextIter.value)
 
-      backwardPropagation((optPaths.drop(1) ++ nextSteps).sortBy(_.utilityValue))
+      backwardPropagation((optPaths.drop(1) ++ nextSteps).sortBy(_.utilityValue).distinct)
     }
 
     @tailrec
@@ -41,14 +41,14 @@ object Task17 {
       if ((cord.r == maxRowIdx) && (cord.c == maxColIdx)) return cord
       val currentDir = optPathHist(cord.r)(cord.c).filter { case (_, value) => value == currentValue }.head._1
       val thisValue = mapOfHeat(cord.r)(cord.c)
-      println(cord, thisValue)
+//      println(cord, thisValue)
       val stdDir = Cord(currentDir.r/math.max(1,math.abs(currentDir.r)), currentDir.c/math.max(1,math.abs(currentDir.c)))
       forwardPropagation(cord + stdDir, currentValue - thisValue)
     }
 
     case class OptPathStep(cord: Cord, value: Int) {
 
-      val utilityValue: Int = value + maxColIdx + maxRowIdx - cord.r - cord.c
+      val utilityValue: Int = value
       def eligibleSteps(optPathForward: Cord): List[Cord] = Cord.STEPS.flatMap { stp =>
         optPathForward + stp match {
           case out if math.max(out.r, out.c) > 3 => None
@@ -91,16 +91,16 @@ object Task17 {
       line <- lines
     } yield line.map(_.toString.toInt).toArray).toArray)
 
-    val startValue = heatMap.mapOfHeat(heatMap.maxRowIdx)(heatMap.maxColIdx) - heatMap.mapOfHeat(0)(0)
+    val startValue = heatMap.mapOfHeat(heatMap.maxRowIdx)(heatMap.maxColIdx)
     heatMap.optPathHist(heatMap.maxRowIdx)(heatMap.maxColIdx) =
       heatMap.optPathHist(heatMap.maxRowIdx)(heatMap.maxColIdx).updated(Cord(0,0), startValue)
     val res = heatMap.backwardPropagation(
       List(heatMap.OptPathStep(Cord(heatMap.maxRowIdx, heatMap.maxColIdx), startValue))
     ).head
 
-    heatMap.forwardPropagation(res.cord, res.value)
+//    heatMap.forwardPropagation(res.cord, res.value)
 
-    res.value
+    res.value  - heatMap.mapOfHeat(0)(0)
   }
 
   def calcFile2(file: BufferedSource): Int = {
