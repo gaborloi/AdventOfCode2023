@@ -2,7 +2,6 @@ package org.practice.advent
 
 import scala.annotation.tailrec
 import scala.io.BufferedSource
-import scala.collection.immutable.SortedSet
 
 object Task17 {
   case class Cord(r: Int, c: Int) {
@@ -13,6 +12,8 @@ object Task17 {
     def *(that: Cord): Int = r * that.r + c * that.c
 
     def valid(maxRowIdx: Int, maxColIdx: Int): Boolean = (r <= maxRowIdx) && (c <= maxColIdx) && (r > -1) && (c > -1)
+
+    def *(const: Int): Cord = Cord(r * const, c * const)
   }
 
   object Cord {
@@ -26,7 +27,7 @@ object Task17 {
 
     @tailrec
     final def backwardPropagation(optPaths: List[OptPathStep]): List[OptPathStep] = {
-//      println(optPaths)
+      println(optPaths)
       val nextIter = optPaths.head
 
       if ((nextIter.cord.r == 0) && (nextIter.cord.c == 0)) return List(nextIter)
@@ -44,6 +45,18 @@ object Task17 {
 //      println(cord, thisValue)
       val stdDir = Cord(currentDir.r/math.max(1,math.abs(currentDir.r)), currentDir.c/math.max(1,math.abs(currentDir.c)))
       forwardPropagation(cord + stdDir, currentValue - thisValue)
+    }
+
+    @tailrec
+    final def backwardPropagationUltra(optPaths: List[OptPathStepUltra]): List[OptPathStepUltra] = {
+//      println(optPaths)
+      val nextIter = optPaths.head
+
+      if ((nextIter.cord.r == 0) && (nextIter.cord.c == 0)) return List(nextIter)
+      val currentHist = optPathHist(nextIter.cord.r)(nextIter.cord.c)
+      val nextSteps = nextIter.update(currentHist, nextIter.value)
+
+      backwardPropagationUltra((optPaths.drop(1) ++ nextSteps).sortBy(_.utilityValue).distinct)
     }
 
     case class OptPathStep(cord: Cord, value: Int) {
@@ -83,6 +96,51 @@ object Task17 {
         }.toList
       }
     }
+
+    case class OptPathStepUltra(cord: Cord, value: Int) {
+
+      val utilityValue: Int = value
+      def eligibleSteps(optPathForward: Cord): List[Cord] = Cord.STEPS.flatMap { stp =>
+        optPathForward + stp match {
+          case out if math.max(out.r, out.c) > 10 => None
+          case _ if optPathForward * stp < 0 => None
+          case _ if optPathForward * stp == 0 => Some(stp * 4)
+          case _ => Some(stp)
+        }
+      }
+
+      def update(optForwards: Map[Cord, Int], currentValue: Int): List[OptPathStepUltra] = {
+        optForwards.filter(_._2 == currentValue).flatMap { case (c, _) =>
+          eligibleSteps(c).flatMap { stp =>
+            val newCord = cord - stp
+            if (!newCord.valid(maxRowIdx, maxColIdx)) {
+              None
+            } else {
+              val optPath = if (c * stp > 0) c + stp else stp
+              val optPathMap = optPathHist(newCord.r)(newCord.c)
+              val newValue =  (1 to math.max(math.abs(stp.r),math.abs(stp.c))).foldLeft(currentValue) { (v, x) =>
+                val stpCord = cord - Cord(stp.r / math.max(1, math.abs(stp.r)), stp.c / math.max(1, math.abs(stp.c))) * x
+                v + mapOfHeat(stpCord.r)(stpCord.c)
+              }
+              val hasBetterPath = (optPathMap.count {
+                case (differentDir, v) if (differentDir * optPath <= 0) && (differentDir * differentDir == 16) =>
+                  v < newValue
+                case _ => false
+              } >= 2) || optPathMap.exists {
+                case (sameDir, v) =>
+                  (v < newValue) && (math.abs(sameDir.r) <= math.abs(optPath.r)) &&
+                    (math.abs(sameDir.c) <= math.abs(optPath.c))
+                case _ => false
+              }
+              if (hasBetterPath) None else {
+                optPathHist(newCord.r)(newCord.c) = optPathMap.updated(optPath, newValue)
+                Some(OptPathStepUltra(newCord, newValue))
+              }
+            }
+          }
+        }.toList
+      }
+    }
   }
 
   def calcFile1(file: BufferedSource): Int = {
@@ -104,6 +162,20 @@ object Task17 {
   }
 
   def calcFile2(file: BufferedSource): Int = {
-    2
+    val lines = file.getLines().toList
+    val heatMap: HeatMap = HeatMap((for {
+      line <- lines
+    } yield line.map(_.toString.toInt).toArray).toArray)
+
+    val startValue = heatMap.mapOfHeat(heatMap.maxRowIdx)(heatMap.maxColIdx)
+    heatMap.optPathHist(heatMap.maxRowIdx)(heatMap.maxColIdx) =
+      heatMap.optPathHist(heatMap.maxRowIdx)(heatMap.maxColIdx).updated(Cord(0,0), startValue)
+    val res = heatMap.backwardPropagationUltra(
+      List( new heatMap.OptPathStepUltra(Cord(heatMap.maxRowIdx, heatMap.maxColIdx), startValue))
+    ).head
+
+    //    heatMap.forwardPropagation(res.cord, res.value)
+
+    res.value  - heatMap.mapOfHeat(0)(0)
   }
 }

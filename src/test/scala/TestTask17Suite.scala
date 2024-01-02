@@ -16,7 +16,7 @@ class TestTask17Suite extends AnyFunSuite {
 
   test("task17_2 test file") {
     println(Task17.calcFile2(Source.fromResource("input_test_17.txt")))
-  } //
+  } // 94
 
   test("task17_2 all file") {
     println(Task17.calcFile2(Source.fromResource("input_all_17.txt")))
