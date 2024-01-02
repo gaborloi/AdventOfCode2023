@@ -24,11 +24,18 @@ object Task18 {
     "DL" -> 'J', "DR" -> 'L', "UL" -> '7', "UR" -> 'F',
     "LU" -> 'L', "LD" -> 'F', "RU" -> 'J', "RD" -> '7'
   )
-  case class DigOrder(dir: Char, length: Int, color: String)
+  case class DigOrder(dir: Char, length: Int)
 
   def parseline(line: String): DigOrder = {
     val inputs = line.split(" ")
-    DigOrder(inputs(0).head, inputs(1).toInt, inputs(2))
+    DigOrder(inputs(0).head, inputs(1).toInt)
+  }
+
+  val hexlastToDir = Map('0' -> 'R', '1' -> 'D', '2' -> 'L', '3' -> 'U')
+
+  def parseline2(line: String): DigOrder = {
+    val inputs = line.split(" ")(2)
+    DigOrder(hexlastToDir(inputs.charAt(7)), Integer.parseInt(inputs.substring(2,7), 16))
   }
 
   @tailrec
@@ -96,6 +103,18 @@ object Task18 {
   }
 
   def calcFile2(file: BufferedSource): Int = {
-    2
+    val digOrders = file.getLines().map(parseline2).toList
+    val (_, minCord,maxCord) = digOrders.foldLeft((Cord(0,0),Cord(0,0),Cord(0,0))) { case ((curr, min, max), digO) =>
+      val next = curr + DIRTOCORD(digO.dir) * digO.length
+      (next, Cord(math.min(next.r, min.r), math.min(next.c, min.c)),
+        Cord(math.max(next.r, max.r), math.max(next.c, max.c)))
+    }
+    val length = maxCord - minCord
+    val undiggedMap = (for (_ <- 0 to length.r) yield (for (_ <- 0 to length.c) yield '.').toArray).toArray
+    val start = Cord(0,0) - minCord
+    val diggedBorders = digTheMap(digOrders.iterator, start, digOrders.last.dir, undiggedMap)
+
+//    for (arr <- diggedBorders) println(arr.toList)
+    calcFills(diggedBorders)
   }
 }
