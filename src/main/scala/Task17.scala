@@ -27,7 +27,7 @@ object Task17 {
 
     @tailrec
     final def backwardPropagation(optPaths: List[OptPathStep]): List[OptPathStep] = {
-      println(optPaths)
+//      println(optPaths)
       val nextIter = optPaths.head
 
       if ((nextIter.cord.r == 0) && (nextIter.cord.c == 0)) return List(nextIter)
