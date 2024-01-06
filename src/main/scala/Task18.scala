@@ -144,14 +144,13 @@ object Task18 {
         if (checkPipeString(pipeString)) sum + (idx - previousIdx - 1).toLong else sum
       case vertical if vertical == 'T' || vertical == 'J' => sum
     }
-//    println(updSum)
+
     if (!pipeIt.hasNext) updSum else evalRow(pipeIt, pipeString :+ c, idx, updSum)
   }
 
   def calcFillsSparse(diggedMap: List[SparseMapRow]): Long = diggedMap.foldLeft(0L) { (sum, smr) =>
     val ordered = smr.sparsePipe.sortWith { case ((_,idx1), (_, idx2)) => idx1 < idx2  }
-    println(sum, ordered)
-//    println(evalRow(ordered.iterator, "", 0, 0L))
+
     sum + evalRow(ordered.iterator, "", 0, 0L) * smr.rows.size.toLong
   }
   def calcFile1(file: BufferedSource): Int = {
@@ -169,7 +168,6 @@ object Task18 {
 
     for (arr <- diggedBorders) println(arr.toList)
     calcFills(diggedBorders)
-    1
   }
 
   def calcFile2(file: BufferedSource): Long = {
@@ -179,15 +177,12 @@ object Task18 {
       (next, Cord(math.min(next.r, min.r), math.min(next.c, min.c)),
         Cord(math.max(next.r, max.r), math.max(next.c, max.c)))
     }
-    println(minCord, maxCord)
+
     val maxCordMod = maxCord - minCord
     val minCordMod = Cord(0, 0)
     val start = Cord(0,0) - minCord
     val sparseMapInit = List(SparseMapRow(Range.inclusive(minCordMod.r, maxCordMod.r),List()))
     val diggedBorders = digTheMapSparse(digOrders.iterator, start, digOrders.last.dir, sparseMapInit)
-    diggedBorders foreach { db =>
-      println(db.rows, db.sparsePipe)
-    }
     calcFillsSparse(diggedBorders) + digOrders.map(_.length.toLong).sum
   }
 }

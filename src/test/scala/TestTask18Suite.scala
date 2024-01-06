@@ -19,11 +19,5 @@ class TestTask18Suite extends AnyFunSuite {
 
   test("task18_2 all file") {
     println(Task18.calcFile2(Source.fromResource("input_all_18.txt")))
-  } //
-
-  test("tryout") {
-    val x = Range(0, 3)
-    val y = Range.inclusive(0, 3)
-    println(x.max,y.max)
-  }
+  } // 129849166997110
 }

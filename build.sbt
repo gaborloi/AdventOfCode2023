@@ -7,7 +7,8 @@ lazy val root = (project in file("."))
     name := "AdventOfCode2023",
     idePackagePrefix := Some("org.practice.advent")
   )
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.15" % "test"
 
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.15" % "test"
 libraryDependencies +=
   "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
+libraryDependencies += "com.typesafe.play" %% "play-json" % "2.9.4"
