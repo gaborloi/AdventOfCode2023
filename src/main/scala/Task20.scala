@@ -37,12 +37,13 @@ object Task20 {
       queue+= Message("button", "broadcaster", highPulse = false)
       transmit()
     }
-
   }
 
   case class Message(sender: String, receiver: String, highPulse: Boolean)
 
   abstract class Module(val name: String, val destinations: List[String]) {
+
+    var period: Int
     def receivePulse(m: Message): Unit
 
     def sendPulse(modules: Map[String, Module]): List[Message]
@@ -51,6 +52,8 @@ object Task20 {
   case class FlipFlop(
     ffname: String, ffdest: List[String], var isOn: Boolean = false, var latestPulse: Boolean = false
   ) extends Module(ffname, ffdest) {
+
+    var period: Int = 2
     def receivePulse(m: Message): Unit = {
       latestPulse =  m.highPulse
       if (!m.highPulse) isOn = !isOn
@@ -62,8 +65,11 @@ object Task20 {
   }
 
   case class Conjunction(cName: String, cDest: List[String], inputs: mutable.Map[String, Boolean]) extends Module(cName, cDest) {
+
+    var period: Int = math.pow(2, inputs.size).toInt
     def receivePulse(m: Message): Unit = {
       inputs(m.sender) = m.highPulse
+//      println(cName, inputs)
     }
 
     def sendPulse(modules: ModuleMap): List[Message] = {
@@ -75,6 +81,8 @@ object Task20 {
   case class Broadcaster(
     dest: List[String], var lastPulse: Boolean = false
   ) extends Module("broadcaster", dest) {
+
+    var period: Int = 1
     def receivePulse(m: Message): Unit = {
       lastPulse = m.highPulse
     }
@@ -85,6 +93,8 @@ object Task20 {
   }
 
   case class Terminator(dest: List[String], var terminate: Boolean = false) extends Module("rx", dest) {
+
+    var period: Int = 1
     def receivePulse(m: Message): Unit = {
       terminate = !m.highPulse
     }
@@ -134,8 +144,31 @@ object Task20 {
     val modules = rawModules.map (m => m.name -> m).toMap
     val mh = MessageHandler(mutable.Queue[Message](), modules)
 
-    for (_ <- 1 to 1000) {  mh.pushTheButton() }
+    for (_ <- 1 to 1000) {
+      mh.pushTheButton()
+    }
     mh.lowCounter * mh.highCounter
+  }
+
+  def affectsTo(moduleName: String, modules: ModuleMap, affectedSet: Set[String]): Set[String] = {
+    val affected = modules(moduleName).destinations.toSet.filterNot( _ == "dn").diff(affectedSet)
+
+    if (affected.isEmpty) {
+      return affectedSet
+    }
+    affected.foldLeft(affectedSet.union(affected)) { (s, a) =>
+      affectsTo(a, modules, s)
+    }
+  }
+
+  @tailrec
+ final def checkHash(toObserve: List[Module], previousHashes: List[Int], mh:MessageHandler, i: Int): (Int, Int) = {
+    if (i > 10000) return (-1,-1)
+    mh.pushTheButton()
+    val thisHash = toObserve.hashCode()
+    if (previousHashes.contains(thisHash))
+      return (previousHashes.indexOf(thisHash),i)
+    checkHash(toObserve, previousHashes :+ thisHash, mh, i + 1)
   }
 
   def calcFile2(file: BufferedSource): Long = {
@@ -146,11 +179,13 @@ object Task20 {
     val modules = (rawModules :+ Terminator(List())).map (m => m.name -> m).toMap
     val mh = MessageHandler(mutable.Queue[Message](), modules)
 
-//    val relevantSet = findRelevant(Set("rx"), modules, Set())
-//    println(modules.size)
-//    println(relevantSet.size)
-//    println(modules.keySet.diff(relevantSet))
+    val afset = modules("broadcaster").destinations.map { d =>
+      affectsTo(d, modules, Set())
+    }
 
-    findTerminator(mh)
+    afset.foldLeft(1L) { (prod, af) =>
+      val (_, res) = checkHash(af.map(modules(_)).toList, List(),mh, 0)
+      prod * res.toLong
+    }
   }
 }
