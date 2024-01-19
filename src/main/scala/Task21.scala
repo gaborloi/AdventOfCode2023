@@ -80,13 +80,16 @@ object Task21 {
       currentStep: Int,
       prePos: Set[Cord],
       preprePos: Set[Cord],
-      newGardenMap: GardenMap
-    ): GardenMap = {
-      val newPos = prePos.flatMap(pos => evalCord(pos)).diff(preprePos)
+      newGardenMap: Array[Array[Int]]
+    ): Array[Array[Int]] = {
+      val newPos = prePos.flatMap(pos => evalCordInf(pos)).diff(preprePos)
       newPos.foreach { c =>
-        newGardenMap(c.r)(c.c) = (currentStep + 1 - math.abs(c.r-startCord.r) - math.abs(c.c-startCord.c)).toString.head
+        if (c.valid(rowMax, colMax)) {
+          newGardenMap(c.r)(c.c) =
+            currentStep + 1
+        }
       }
-      if ((maxStep == currentStep + 1) || newPos.isEmpty) return newGardenMap
+      if (maxStep == currentStep + 1) return newGardenMap
       diffFromOptimal(maxStep, currentStep + 1,  newPos, prePos, newGardenMap)
     }
 
@@ -130,35 +133,22 @@ object Task21 {
     val (evenCount, oddCount) = garden.step(10000, 0, Set(garden.startCord), 1, Set(), 0)
 
     (1 until maxStep / garden.rowMax).foldLeft(0L) { (sum, idx) =>
-      val count = if(idx % 2 == 0) oddCount.toLong else evenCount.toLong
+      val count = if((idx + maxStep) % 2 == 0) oddCount.toLong else evenCount.toLong
       sum + idx.toLong * count
     }
   }
 
+  def calcNStep(step: Int, diffFromOpt: Array[Array[Int]]): Long =
+    diffFromOpt.zipWithIndex.foldLeft(0L) { case (count, (arr, r)) =>
+      count + arr.zipWithIndex.count { case (n, c) => ((r + c) % 2) == (step % 2) && (n <= step) && (n >= 0) }
+  }
   def calcQuarterPlane(garden: Garden, maxStep: Int): Long = {
-//    val fcg = calcFullyCoveredGardens(garden, maxStep)
-//    val fullRound = garden.step(garden.rowMax + maxStep % garden.rowMax, 0, Set(garden.startCord), 1, Set(), 0)._1 * (maxStep / garden.rowMax)
-//    val resid = if (maxStep % garden.rowMax > 0)
-//      garden.step(maxStep % garden.rowMax, 0, Set(garden.startCord), 1, Set(), 0)._1 * (maxStep / garden.rowMax + 1)
-//    else 1L //TODO
-    val (evenCount, oddCount) = garden.step(10000, 0, Set(garden.startCord), 1, Set(), 0)
-    var sum = 0L
-    for (r <- Range.inclusive(0, maxStep, 131); c <- Range.inclusive(0, maxStep, 131)) {
-      if (maxStep - r - c > 262) {
-        val count = if((r + c) % 2 == 0) evenCount.toLong else oddCount.toLong
-//        println(r,c, "full", count)
-        sum += count
-      } else if (maxStep - r - c > 0) {
-        val resid = garden.step(maxStep - r - c, 0, Set(garden.startCord), 1, Set(), 0)._1
-        garden.diffFromOptimal(maxStep - r - c, 0, Set(garden.startCord),Set(),garden.garden.map(_.clone())) foreach {arr => println(arr.mkString)}
-        println()
-//        println(r,c, "partial", resid)
-        sum += resid
-      } else if (maxStep - r - c == 0) sum += 1L
-    }
-    sum
-//    println(fcg, resid, fullRound)
-//    fcg + resid + fullRound
+    val fcg = calcFullyCoveredGardens(garden, maxStep)
+    val diffFromOpt = garden.diffFromOptimal(300, 0, Set(garden.startCord), Set(), garden.garden.map(_.map(_ => -1)))
+    diffFromOpt(garden.startCord.r)(garden.startCord.c) = 0
+    val fullRound = calcNStep(garden.rowMax + maxStep % garden.rowMax, diffFromOpt) * (maxStep / garden.rowMax)
+    val resid = calcNStep(maxStep % garden.rowMax, diffFromOpt) * ((maxStep / garden.rowMax) + 1)
+    fcg + resid + fullRound
   }
 
   def calcFile1(file: BufferedSource, maxStep: Int): Int = {
@@ -175,15 +165,14 @@ object Task21 {
       line <- lines
     } yield line.toArray).toArray)
 
-    val rdG = garden.shiftGarden(Cord(0,0) - garden.startCord)
-    val luG = garden.shiftGarden(Cord(garden.rowMax - 1, garden.colMax - 1) - garden.startCord)
-    val ldG = garden.shiftGarden(Cord(0, garden.colMax - 1) - garden.startCord)
-    val ruG = garden.shiftGarden(Cord(garden.rowMax - 1, 0) - garden.startCord)
+    val rdG = Cord(0,0)
+    val luG = Cord(garden.rowMax - 1, garden.colMax - 1)
+    val ldG = Cord(0, garden.colMax - 1)
+    val ruG = Cord(garden.rowMax - 1, 0)
 
     List(rdG, luG, ldG, ruG).foldLeft(0L) { (sum, gm) =>
-      val g = Garden(gm)
-
-      sum + calcQuarterPlane(g,maxStep)
+      val g = Garden(garden.shiftGarden(gm - garden.startCord))
+      sum + calcQuarterPlane(g, maxStep)
     } - (maxStep / 2 + 1) * 4 + 1 * (maxStep - 1) % 2
   }
 
