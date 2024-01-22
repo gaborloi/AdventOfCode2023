@@ -29,32 +29,49 @@ object Task22 {
     math.max(a1, a2) >= math.min(b1, b2) && math.max(b1, b2) >= math.min(a1, a2)
 
   class Sandbox(bricks: List[Brick]) {
-    val box: List[Brick] = bricks.sortBy(_.head) // TODO could be Queue
+    val box: List[Brick] = bricks.sortBy(_.head)
 
     def fallBricks(): Sandbox = new Sandbox(fall(box.iterator, List()))
 
-    def countRemovable(): Int = {
-      box.map(_.head).toSet.foldLeft(0) { (count, currHead) =>
+    def countRemovable(): Int = box.map(_.head).toSet.foldLeft(0) { (count, currHead) =>
         count + countLevel(box.filter(_.head == currHead), box.filter(_.toe == currHead + 1))
+      }
+
+    def countFalling(): Int = {
+      val supported2supports = box.map(_.head).distinct.sorted.reverse.foldLeft(Map[Brick, List[Brick]]()) { (b2c, currHead) =>
+        countFallingLevel(box.filter(_.head == currHead), box.filter(_.toe == currHead + 1), b2c)
+      }
+
+      box.foldLeft(0) { (count, removed) =>
+        count + removeSupport(supported2supports, Set(removed)).size - 1
       }
     }
 
-    def countLevel(bricksToCheck: List[Brick], bricksAbove: List[Brick]): Int = {
-//      println(bricksToCheck.size, bricksAbove.size)
+    def removeSupport(supported2supports: Map[Brick, List[Brick]], removed: Set[Brick]): Set[Brick] = {
+      val supToSupporters = supported2supports.map { case (s, ls) => s -> ls.filterNot(removed.contains) }
+      val (unsupported, supported) = supToSupporters.partition { _._2.isEmpty }
+      if (unsupported.isEmpty) return removed
+      removeSupport(supported, removed.union(unsupported.keySet))
+    }
+
+    def countFallingLevel(
+      bricksToCheck: List[Brick], bricksAbove: List[Brick], brickToHold: Map[Brick, List[Brick]]
+    ): Map[Brick, List[Brick]] = bricksToCheck.foldLeft(brickToHold) { (b2h, curr) =>
+      val fallingBricks = bricksAbove.filter { ba => ba.fallN(1).checkCollision(curr) }
+      fallingBricks.foldLeft(b2h) { (b2hUpd, fb) => b2hUpd.updated(fb, b2hUpd.getOrElse(fb, List[Brick]()) :+ curr) }
+    }
+
+    def countLevel(bricksToCheck: List[Brick], bricksAbove: List[Brick]): Int =
       bricksToCheck.foldLeft(0) { (count, curr) =>
         val otherSupports = bricksToCheck.filterNot(_ == curr)
         val isStatic = bricksAbove.forall { ba => otherSupports.exists(b2c => ba.fallN(1).checkCollision(b2c))}
-        val out = if (isStatic) {
-          println(curr)
-          1
-        } else 0
+        val out = if (isStatic) 1 else 0
         count + out
       }
-    }
+
     @tailrec
     final def fall(boxIt: Iterator[Brick], fallenBricks: List[Brick]): List[Brick] = {
       val currentBrick = boxIt.next()
-//      println(currentBrick)
       val (updatedBrick, stopped) = fallenBricks.foldLeft((currentBrick, false)) { case ((cB, stopped), fB) =>
         if (stopped) (cB, true) else {
           val fallenCb = cB.fallN(cB.toe - fB.head)
@@ -64,7 +81,6 @@ object Task22 {
         }
       }
       val settledBrick = if (stopped) updatedBrick else updatedBrick.fallN(updatedBrick.toe - 1)
-      println(currentBrick, settledBrick)
       val updFallenBricks = (fallenBricks :+ settledBrick).sortBy(_.head).reverse
       if (!boxIt.hasNext) return updFallenBricks
       fall(boxIt, updFallenBricks)
@@ -84,11 +100,13 @@ object Task22 {
     val bricks = Sandbox.parseBricks(file.getLines()).toList
     val sandBox = new Sandbox(bricks)
     val fallenSB = sandBox.fallBricks()
-    println(fallenSB.box)
     fallenSB.countRemovable()
   }
 
-  def calcFile2(file: BufferedSource): Long = {
-    2
+  def calcFile2(file: BufferedSource): Int = {
+    val bricks = Sandbox.parseBricks(file.getLines()).toList
+    val sandBox = new Sandbox(bricks)
+    val fallenSB = sandBox.fallBricks()
+    fallenSB.countFalling()
   }
 }

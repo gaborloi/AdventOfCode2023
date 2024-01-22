@@ -15,10 +15,10 @@ class TestTask22Suite extends AnyFunSuite {
   }
 
   test("task22_2 test file") {
-    println(Task22.calcFile2(Source.fromResource("input_test_22.txt")))
-  } //
+    assert(Task22.calcFile2(Source.fromResource("input_test_22.txt")) == 7)
+  }
 
   test("task22_2 all file") {
-    println(Task22.calcFile2(Source.fromResource("input_all_22.txt")))
-  } //
+    assert(Task22.calcFile2(Source.fromResource("input_all_22.txt")) == 71002)
+  }
 }
