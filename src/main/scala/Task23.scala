@@ -63,23 +63,6 @@ object Task23 {
       }
     }
 
-    def slideback(): Option[Cord] = if (fetchTile(currentCord) != '.') {
-      Some(stepBack())
-    } else None
-
-    def printPath(): Unit = {
-      val mapToPrint = gardenMap.map(_.clone())
-      var cord = currentCord
-      println(currentCord)
-      mapToPrint(cord.r)(cord.c) = 'O'
-      path foreach { dir =>
-        cord -= dir
-        mapToPrint(cord.r)(cord.c) = 'O'
-      }
-      println(path.foldLeft(List[Cord](currentCord)) { (l, dir) => l :+ (l.last - dir) }.toSet.size)
-      mapToPrint foreach {arr => println(arr.mkString)}
-    }
-
     @tailrec
     final def walkForward(longestPath: Int, availableSteps: List[Cord]): Int = {
       val (longestPathUpd, availableStepsUpd) = availableSteps.find { checkDirection } match {
@@ -99,14 +82,13 @@ object Task23 {
       walkForward(longestPathUpd, availableStepsUpd)
     }
 
-    def stepBack(): Cord = {
+    @tailrec
+    final def stepBack(): Cord = {
       val dir = path.pop()
       trackerMap(currentCord.r)(currentCord.c) = false
       currentCord -= dir
-      slideback() match {
-        case Some(d) => d
-        case None => dir
-      }
+      if (fetchTile(currentCord) == '.') return dir
+      stepBack()
     }
   }
 

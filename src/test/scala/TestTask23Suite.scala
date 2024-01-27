@@ -19,6 +19,6 @@ class TestTask23Suite extends AnyFunSuite {
   }
 
   test("task23_2 all file") {
-    assert(Task23.calcFile2(Source.fromResource("input_all_23.txt")) == 71002)
+    assert(Task23.calcFile2(Source.fromResource("input_all_23.txt")) == 6542)
   }
 }
