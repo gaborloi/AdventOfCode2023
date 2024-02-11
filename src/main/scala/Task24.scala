@@ -1,6 +1,6 @@
 package org.practice.advent
 
-import org.apache.commons.math3.exception.{ConvergenceException, MathArithmeticException}
+import org.apache.commons.math3.exception.MathArithmeticException
 
 import scala.io.BufferedSource
 import org.apache.commons.math3.linear.{Array2DRowFieldMatrix, ArrayFieldVector, FieldLUDecomposition}
@@ -14,8 +14,6 @@ object Task24 {
   def abs(d: BigDecimal): BigDecimal = if (d < 0) -d else d
 
   class GradientDescent(val w1: WindInfoBD, val w2: WindInfoBD, w3: WindInfoBD, learningRate: BigDecimal, eps: BigDecimal) {
-
-//    val paramcount: Int = winds.head.position.length + winds.head.velocity.length
 
     def calcTime(pw: List[BigDecimal], vw: List[BigDecimal], pk: List[BigDecimal], vk: List[BigDecimal]): BigDecimal = {
       val dp = pw.zip(pk).map { case (p1, p2) => p1 - p2 }
@@ -43,16 +41,13 @@ object Task24 {
     @tailrec
     final def gradientDescent(currRock: WindInfoBD, currT1: BigDecimal, currT2: BigDecimal, currIdx: Int, maxIdx: Int): WindInfoBD = {
       val grad = gradient(currRock, currT1, currT2)
-//      println(current, grad)
       val t1Upd = (currT1 - learningRate * grad._1).max(0)
       val t2Upd = (currT2 - learningRate * grad._2).max(0)
       val nextRock = w1.createRock(w2, t1Upd, t2Upd)
       val nextLoss = loss(nextRock)
-//      println(s"$currIdx: $nextLoss, $nextWind")
       if ( nextLoss < 0.001) return nextRock
       if (currIdx > maxIdx) {
         println(s"$currIdx: $nextLoss, $nextRock")
-//        throw new ConvergenceException()
         return nextRock
       }
       gradientDescent(nextRock, t1Upd, t2Upd, currIdx + 1, maxIdx)
@@ -60,14 +55,6 @@ object Task24 {
   }
 
   case class WindInfoBD(position: List[BigDecimal], velocity: List[BigDecimal]) {
-    val dim: Int = position.length
-
-    def perturb(i: Int, eps: BigDecimal): WindInfoBD = {
-      val listOfParam = (position ++ velocity).zipWithIndex.map { case (par, j) =>
-        if (i == j) par + eps else par
-      }
-      WindInfoBD(listOfParam.take(dim), listOfParam.drop(dim))
-    }
 
     def createRock(w2: WindInfoBD, t1: BigDecimal, t2: BigDecimal): WindInfoBD = {
       val dt = t2 - t1
@@ -128,13 +115,8 @@ object Task24 {
       val velocities = parts(1).split(",").map(p => BigDecimal(p.toLong))
       WindInfoBD(positions.toList, velocities.toList)
     }.toList
-//    println(g.loss(WindInfoBD(List(24,13,10), List(-3,1,2))))
+
     val wTest = WindInfoBD(List(26, 12, 11), List(-4, 1, 3))
-//    val rock = g.gradientDescent(wTest, 0, 1000)
-//    rock.position.sum
-//    println(g.gradient(wTest))
-//    println(g.loss(wTest))
-//    println(g.loss(wTest.perturb(3, 1)))
     val g0 = new GradientDescent(winds(1), winds(2), winds.head, 0.1, 0.01)
     var minLoss = g0.loss(wTest)
     var minRock = wTest
