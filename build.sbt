@@ -12,3 +12,4 @@ libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.15" % "test"
 libraryDependencies +=
   "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
 libraryDependencies += "com.typesafe.play" %% "play-json" % "2.9.4"
+libraryDependencies += "org.apache.commons" % "commons-math3" % "3.6.1"
