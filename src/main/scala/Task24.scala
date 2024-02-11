@@ -13,9 +13,9 @@ object Task24 {
 
   def abs(d: BigDecimal): BigDecimal = if (d < 0) -d else d
 
-  class GradientDescent(winds: List[WindInfoBD], learningRate: BigDecimal, eps: BigDecimal) {
+  class GradientDescent(val w1: WindInfoBD, val w2: WindInfoBD, w3: WindInfoBD, learningRate: BigDecimal, eps: BigDecimal) {
 
-    val paramcount: Int = winds.head.position.length + winds.head.velocity.length
+//    val paramcount: Int = winds.head.position.length + winds.head.velocity.length
 
     def calcTime(pw: List[BigDecimal], vw: List[BigDecimal], pk: List[BigDecimal], vk: List[BigDecimal]): BigDecimal = {
       val dp = pw.zip(pk).map { case (p1, p2) => p1 - p2 }
@@ -30,36 +30,38 @@ object Task24 {
     def dist(c1: List[BigDecimal], c2: List[BigDecimal]): BigDecimal =
       c1.zip(c2).map { case (c1i, c2i) => (c1i-c2i).pow(2) }.sum
 
-    def loss(k: WindInfoBD): BigDecimal = winds.foldLeft(BigDecimal(0)) { (s, w) =>
-      val t = calcTime(w.position, w.velocity, k.position, k.velocity)
-      s + dist(w.calcCord(t), k.calcCord(t))
+    def loss(k: WindInfoBD): BigDecimal = {
+      val t = calcTime(w3.position, w3.velocity, k.position, k.velocity)
+      dist(w3.calcCord(t), k.calcCord(t))
     }
 
-    def gradient(k: WindInfoBD): List[BigDecimal] = {
-      val origLoss = loss(k)
-      (for (i <- 0 until paramcount) yield (loss(k.perturb(i, eps)) - origLoss) / eps).toList
+    def gradient(rock: WindInfoBD, t1: BigDecimal, t2: BigDecimal): (BigDecimal, BigDecimal) = {
+      val origLoss = loss(rock)
+      (loss(w1.createRock(w2, t1 + eps, t2)) - origLoss, loss(w1.createRock(w2, t1, t2 + eps)) - origLoss)
     }
 
     @tailrec
-    final def gradientDescent(current: WindInfoBD, currIdx: Int, maxIdx: Int): WindInfoBD = {
-      val grad = gradient(current)
+    final def gradientDescent(currRock: WindInfoBD, currT1: BigDecimal, currT2: BigDecimal, currIdx: Int, maxIdx: Int): WindInfoBD = {
+      val grad = gradient(currRock, currT1, currT2)
 //      println(current, grad)
-      val listOfParam = (current.position ++ current.velocity).zip(grad).map { case (par, g) => par - learningRate * g }
-      val nextWind = WindInfoBD(listOfParam.take(current.dim), listOfParam.drop(current.dim))
-      val nextLoss = loss(nextWind)
+      val t1Upd = (currT1 - learningRate * grad._1).max(0)
+      val t2Upd = (currT2 - learningRate * grad._2).max(0)
+      val nextRock = w1.createRock(w2, t1Upd, t2Upd)
+      val nextLoss = loss(nextRock)
 //      println(s"$currIdx: $nextLoss, $nextWind")
-      if ( nextLoss < 0.001) return nextWind
+      if ( nextLoss < 0.001) return nextRock
       if (currIdx > maxIdx) {
-        println(s"$currIdx: $nextLoss, $nextWind")
+        println(s"$currIdx: $nextLoss, $nextRock")
 //        throw new ConvergenceException()
-        return nextWind
+        return nextRock
       }
-      gradientDescent(nextWind, currIdx + 1, maxIdx)
+      gradientDescent(nextRock, t1Upd, t2Upd, currIdx + 1, maxIdx)
     }
   }
 
   case class WindInfoBD(position: List[BigDecimal], velocity: List[BigDecimal]) {
     val dim: Int = position.length
+
     def perturb(i: Int, eps: BigDecimal): WindInfoBD = {
       val listOfParam = (position ++ velocity).zipWithIndex.map { case (par, j) =>
         if (i == j) par + eps else par
@@ -67,8 +69,17 @@ object Task24 {
       WindInfoBD(listOfParam.take(dim), listOfParam.drop(dim))
     }
 
-    def calcCord(t: BigDecimal): List[BigDecimal] = position.zip(velocity).map { case (p,v) => p + v * t }
+    def createRock(w2: WindInfoBD, t1: BigDecimal, t2: BigDecimal): WindInfoBD = {
+      val dt = t2 - t1
+      val cord1 = calcCord(t1)
+      val rockVelocity: List[BigDecimal] = if (dt == 0) {
+        w2.velocity.map ( _ => 0 )
+      } else w2.calcCord(t2).zip(cord1).map { case (c2, c1) => (c2 - c1) / dt }
+      val rockPosition = cord1.zip(rockVelocity).map { case (c, v) => c - v * t1 }
+      WindInfoBD(rockPosition, rockVelocity)
+    }
 
+    def calcCord(t: BigDecimal): List[BigDecimal] = position.zip(velocity).map { case (p, v) => p + v * t }
   }
 
   case class WindInfo(position: Array[BigReal], velocity: Array[BigReal]) {
@@ -117,7 +128,6 @@ object Task24 {
       val velocities = parts(1).split(",").map(p => BigDecimal(p.toLong))
       WindInfoBD(positions.toList, velocities.toList)
     }.toList
-    val g = new GradientDescent(winds.take(3), 0.1, 0.01)
 //    println(g.loss(WindInfoBD(List(24,13,10), List(-3,1,2))))
     val wTest = WindInfoBD(List(26, 12, 11), List(-4, 1, 3))
 //    val rock = g.gradientDescent(wTest, 0, 1000)
@@ -125,18 +135,35 @@ object Task24 {
 //    println(g.gradient(wTest))
 //    println(g.loss(wTest))
 //    println(g.loss(wTest.perturb(3, 1)))
-    var minLoss = g.loss(wTest)
+    val g0 = new GradientDescent(winds(1), winds(2), winds.head, 0.1, 0.01)
+    var minLoss = g0.loss(wTest)
     var minRock = wTest
-    winds foreach { w =>
-      val rock = g.gradientDescent(w, 0, 1000)
+    (2 until winds.size) foreach { i =>
+      val g = new GradientDescent(winds(i-1), winds(i), winds.head, 0.1, 0.01)
+      val init = g.w1.createRock(g.w2, 1, 2)
+      val rock = g.gradientDescent(init, 1, 2, 0, 1000)
       val rockLoss = g.loss(rock)
       if (rockLoss < minLoss) {
         minRock = rock
         minLoss = rockLoss
-        println(rock, rockLoss)
+        println(rockLoss)
       }
     }
-    minRock.position.sum
-//    1
+
+    (2 until winds.size) foreach { i =>
+      val g = new GradientDescent(winds(i), winds(i - 1), winds.head, 0.1, 0.01)
+      val init = g.w1.createRock(g.w2, 1, 2)
+      val rock = g.gradientDescent(init, 1, 2, 0, 1000)
+      val rockLoss = g.loss(rock)
+      if (rockLoss < minLoss) {
+        minRock = rock
+        minLoss = rockLoss
+        println(rockLoss)
+      }
+    }
+    println(minLoss, minRock)
+//    val res = WindInfoBD(List(318090941338468L, 124187623124113L, 231363386790708L), List(-78, 269, 71))
+//    println(g0.loss(res))
+    minRock.position.sum.toLong
   }
 }
