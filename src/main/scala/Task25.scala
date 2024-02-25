@@ -1,10 +1,7 @@
 package org.practice.advent
 
-import org.practice.advent.Task25.Edge
-
-import scala.collection.immutable.HashSet
+import scala.annotation.tailrec
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 import scala.io.BufferedSource
 
 object Task25 {
@@ -19,94 +16,92 @@ object Task25 {
 
     override def toString: String = s"$vertex1-$vertex2"
   }
-  class Graph(it: Iterator[String]) {
-    val edges: List[Edge] = it.flatMap { l => parseLine(l) }.toList
-
+  class Graph(val edges: List[Edge]) {
     val vertices: Set[String] = edges.foldLeft(Set[String]()) { (s, e) => s.union(Set(e.vertex1, e.vertex2)) }
 
-    private def parseLine(l: String): List[Edge] = {
-      val sp = l.split(":")
-      val firstV = sp.head
-      val otherVs = sp(1).drop(1).split(" ").toList
-      otherVs.map( v => new Edge(firstV, v))
-    }
-
     def findEdges(v: String): List[Edge] = edges.filter { e => e.vertex1 == v || e.vertex2 == v }
+
+    def findNeighbours(v: String): Set[String] =
+      findEdges(v).map { e => if(e.vertex1 == v) e.vertex2 else e.vertex1 }.toSet
+
+    def dropEdges(toDrop: List[Edge]): Graph = new Graph(edges.filterNot( e => toDrop.contains(e)))
   }
 
-  class PathEvaluator() {
-    var shortestPaths: ListBuffer[HashSet[Edge]] = ListBuffer[HashSet[Edge]]()
-    var independentPathCount = 0
-
-    def evalPath(path: HashSet[Edge]): Boolean = {
-      if (shortestPaths.forall { sp => sp.intersect(path).isEmpty }) {
-        addIndependentPath(path)
-        return true
-      }
-      if (!shortestPaths.forall { sp => sp.diff(path).nonEmpty }) return false //sp < path
-      val keepPaths = shortestPaths.filter { sp => path.diff(sp).nonEmpty } // sp > path
-      if (keepPaths.size != shortestPaths.size) {
-        shortestPaths = keepPaths :+ path
-        independentPathCount = recalculatePathCount()
-      }
-      true
-    }
-
-    def recalculatePathCount(): Int = {
-      if (shortestPaths.size < 2) shortestPaths.size else {
-        for (elem <- (2 to shortestPaths.size)) {
-          val hasIndependent = shortestPaths.combinations(elem).exists { lb =>
-            lb.reduce { (a, b) => a.union(b) }.size == lb.map(_.size).sum
-          }
-          if (!hasIndependent) return elem - 1
-        }
-      shortestPaths.size
-      }
-    }
-    def addIndependentPath(path: HashSet[Edge]): Unit = {
-      independentPathCount += 1
-      shortestPaths += path
-    }
-  }
 
   class FindIndependentPath(val start: String, val graph: Graph) {
 
-    val accessedVertices: mutable.Map[String, PathEvaluator] = mutable.Map[String, PathEvaluator]()
+    val accessedVertices: mutable.Map[String, List[List[Edge]]] = mutable.Map()
+    private val edgeToCover: mutable.Queue[(String, List[Edge])] = mutable.Queue().addOne((start, List()))
 
-    def findPaths(): Int = {
-      addEdge(HashSet[Edge](), start)
-      val indepentPathsCount = accessedVertices.map { case (v, pe) => v -> pe.independentPathCount }.toMap
-      println(indepentPathsCount)
-      val relevantVertices = accessedVertices.filter { case (_, pe) => pe.independentPathCount == 3 }
-
-//      println(relevantVertices.map { case (v, paths) => v -> paths.map (_.size) })
-//      println(relevantVertices("rzs"))
-      indepentPathsCount.min._2
+    def findPaths(pathMinLength: Int, minCount: Int): List[Edge] = {
+      addEdge()
+      println(accessedVertices.map { case (k, v) => k -> v.size } )
+      val sp = accessedVertices.values.flatten
+      val filterValue = sp.map(_.size).max - pathMinLength
+      println(sp.map(_.size).max)
+      val filtered = sp.filter(_.size >= filterValue)
+      val subset = filtered.foldLeft(Set[Edge]()) { (s, l) => s.union(l.toSet) }
+      val counts = subset.map { e => e -> filtered.count(_.contains(e)) }.toMap.filter(_._2 > minCount).keys.toList
+      counts
     }
 
-    def addEdge(path: HashSet[Edge], nextVertex: String): Unit = {
-      println(nextVertex, path)
-      accessedVertices.get(nextVertex) match {
-        case Some(savedPaths) => if (!savedPaths.evalPath(path)) return
-        case None => 1
+    @tailrec
+    final def addEdge(): Unit = {
+      val (nextVertex, path) = edgeToCover.dequeue()
+
+      val (extendedPaths, hasNew) = accessedVertices.get(nextVertex) match {
+        case Some(savedPaths) => if (savedPaths.forall { savedPath => savedPath.forall(!path.contains(_)) }) {
+          (savedPaths :+ path, true)
+        } else (savedPaths, false)
+        case None => (List(path), true)
       }
 
-      graph.findEdges(nextVertex).foreach { e =>
-        if(path.isEmpty || e != path.last) {
-          val v = if (nextVertex == e.vertex1) e.vertex2 else e.vertex1
-          if (v != start) addEdge(path + e , v)
+      if(hasNew) {
+        accessedVertices(nextVertex) = extendedPaths
+        graph.findEdges(nextVertex).foreach { e =>
+          if (path.isEmpty || e != path.last) {
+            val v = if (nextVertex == e.vertex1) e.vertex2 else e.vertex1
+            if (v != start) edgeToCover.addOne((v, path :+ e))
+          }
         }
       }
+      if(edgeToCover.isEmpty) return
+      addEdge()
     }
   }
 
-  def calcFile1(file: BufferedSource): Int = {
-    val g = new Graph(file.getLines())
-    val algo = new FindIndependentPath(g.vertices.head, g)
-    algo.findPaths()
+  def parseLine(l: String): List[Edge] = {
+    val sp = l.split(":")
+    val firstV = sp.head
+    val otherVs = sp(1).drop(1).split(" ").toList
+    otherVs.map( v => new Edge(firstV, v))
   }
 
-  def calcFile2(file: BufferedSource): Int = {
-    2
+  @tailrec
+  def walkthroughGraph(g: Graph, neighbourVertices: Set[String], coveredVertices: Set[String]): Int = {
+    val newVertices = neighbourVertices.foldLeft(Set[String]()) { (newNeighbours, v) =>
+      newNeighbours.union(g.findNeighbours(v).diff(coveredVertices))
+    }
+    if (newVertices.isEmpty) return coveredVertices.size
+
+    walkthroughGraph(g, newVertices, coveredVertices.union(newVertices))
+  }
+
+  def calcFile1(file: BufferedSource, pathLengthCount: Int, minPathLength: Int): Int = {
+    val edges = file.getLines().flatMap(parseLine).toList
+    val g = new Graph(edges)
+    val start = g.vertices.head
+    val algo = new FindIndependentPath(start, g)
+
+    val edgesToTest = algo.findPaths(pathLengthCount, minPathLength)
+
+    val vertexCount = g.vertices.size
+    val init = Set(start)
+    edgesToTest.combinations(3) foreach { dropEdges =>
+
+      val groupCount = walkthroughGraph(g.dropEdges(dropEdges), init, init )
+      if (groupCount < vertexCount) return groupCount * ( vertexCount - groupCount)
+    }
+    0
   }
 }
